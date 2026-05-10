@@ -5,17 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 <style>
-    :root { --gold: #D4AF37; --black: #0A0A0A; }
+    :root { --gold: #D4AF37; --black: #0A0A0A; --red: #8B0000; }
     * { box-sizing: border-box; }
-    body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 600px; margin: auto; }
-  .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
+    body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 650px; margin: auto; }
+ .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
     h1 { font-family: 'Cinzel'; text-align: center; font-size: 28px; }
-  .crown-main { font-size: 50px; text-align: center; }
+ .crown-main { font-size: 50px; text-align: center; }
     input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--gold); background: #222; color: white; }
     button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; }
-  .hidden { display: none; }
-  .flex { display: flex; gap: 20px; }
-  .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; }
+ .hidden { display: none; }
+ .flex { display: flex; gap: 20px; align-items: flex-start; }
+ .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
+ .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
+    table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
+    td, th { border: 1px solid #B8941F; padding: 8px; text-align: left; }
+ .admin-btn { background: var(--red); }
 </style>
 </head>
 <body>
@@ -24,19 +28,23 @@
     <div class="crown-main">👑</div>
     <h1>TEAM SINGLE EMPIRE</h1>
     <p style="text-align:center; font-size:11px;">ROYAL eCITIZEN PORTAL • EST. 2026</p>
+    <div class="stats">Loyal Subjects: <span id="liveCount">0</span> 👑</div>
     
     <input id="jina" placeholder="Royal Name">
     <input id="oshwa" placeholder="Date of Last Betrayal">
     <input id="embassy" placeholder="Territory • Embassy yako">
+    <label style="font-size:12px; color:#B8941F;">Official Portrait:</label>
+    <input type="file" id="photo" accept="image/*">
 
     <button type="button" onclick="generate()">👑 CLAIM CITIZENSHIP 👑</button>
+    <button type="button" onclick="showAdmin()" style="background:#333; color:var(--gold);">ROYAL ADMIN</button>
 </div>
 
 <div class="royal-card hidden" id="passport">
     <div class="crown-main">👑</div>
     <h1>PASSPORT DECREED</h1>
     <div class="flex">
-        <div class="photo-frame"></div>
+        <img id="passPhoto" class="photo-frame" src="">
         <div>
             <p><b>PASSPORT NO:</b> <span id="passNo"></span></p>
             <p><b>NAME:</b> <span id="passJina"></span></p>
@@ -49,29 +57,127 @@
     <button type="button" onclick="location.reload()">NEW APPLICATION</button>
 </div>
 
+<div class="royal-card hidden" id="admin">
+    <h1>KING'S PRIVY COUNCIL 👑</h1>
+    <p><b>Empire Population:</b> <span id="totalCitizens">0</span> Loyal Subjects</p>
+    <button type="button" onclick="exportData()">EXPORT ROYAL CENSUS</button>
+    <button type="button" onclick="clearDatabase()" class="admin-btn">💀 DISSOLVE EMPIRE 💀</button>
+    <h3>Book of Citizens:</h3>
+    <table id="citizenTable">
+        <tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Decree</th></tr>
+    </table>
+    <button type="button" onclick="location.reload()">CLOSE CHAMBER</button>
+</div>
+
 <script>
-let counter = 3;
+// EMPIRE DATABASE
+let db = JSON.parse(localStorage.getItem('tseDB') || '[]');
+let counter = parseInt(localStorage.getItem('tseCounter') || '4'); // MR VOID ni TSE004
+
+// UPDATE LIVE COUNTER
+document.getElementById('liveCount').innerText = db.length;
 
 function generate() {
-    const jina = document.getElementById('jina').value;
-    const oshwa = document.getElementById('oshwa').value;
-    const embassy = document.getElementById('embassy').value;
+    const jina = document.getElementById('jina').value.trim();
+    const oshwa = document.getElementById('oshwa').value.trim();
+    const embassy = document.getElementById('embassy').value.trim();
+    const photoFile = document.getElementById('photo').files[0];
 
-    if(!jina || !oshwa || !embassy) {
-        alert('Jaza zote King! 👑');
+    if(!jina ||!oshwa ||!embassy) {
+        alert('By Royal Decree: Jaza zote King! 👑');
         return;
     }
 
     counter++;
     const passNo = 'TSE' + String(counter).padStart(3, '0');
-    
-    document.getElementById('passNo').innerText = passNo;
-    document.getElementById('passJina').innerText = jina.toUpperCase();
-    document.getElementById('passEmbassy').innerText = embassy;
-    document.getElementById('passOshwa').innerText = oshwa;
 
+    if(photoFile) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            saveCitizen(passNo, jina, oshwa, embassy, e.target.result);
+        };
+        reader.onerror = function() {
+            saveCitizen(passNo, jina, oshwa, embassy, '');
+        };
+        reader.readAsDataURL(photoFile);
+    } else {
+        saveCitizen(passNo, jina, oshwa, embassy, '');
+    }
+}
+
+function saveCitizen(passNo, jina, oshwa, embassy, photoData) {
+    const citizen = {
+        no: passNo, jina: jina, oshwa: oshwa,
+        embassy: embassy, photo: photoData,
+        date: new Date().toLocaleDateString()
+    };
+    db.push(citizen);
+    localStorage.setItem('tseDB', JSON.stringify(db));
+    localStorage.setItem('tseCounter', counter);
+    showPassport(citizen);
+}
+
+function showPassport(c) {
     document.getElementById('form').classList.add('hidden');
     document.getElementById('passport').classList.remove('hidden');
+    document.getElementById('passNo').innerText = c.no;
+    document.getElementById('passJina').innerText = c.jina.toUpperCase();
+    document.getElementById('passEmbassy').innerText = c.embassy;
+    document.getElementById('passOshwa').innerText = c.oshwa;
+    document.getElementById('passPhoto').src = c.photo || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="110"><rect fill="%23111"/><text x="50%" y="50%" fill="%23D4AF37" font-size="10" text-anchor="middle" dy=".3em">SUBJECT</text></svg>';
+}
+
+function showAdmin() {
+    const pass = prompt("Speak the Royal Password:");
+    if(pass!== "smokie2026") {
+        alert("Treason! Only the King may enter! 💀👑");
+        return;
+    }
+    document.getElementById('form').classList.add('hidden');
+    document.getElementById('admin').classList.remove('hidden');
+    loadAdminData();
+}
+
+function loadAdminData() {
+    document.getElementById('totalCitizens').innerText = db.length;
+    const table = document.getElementById('citizenTable');
+    table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Decree</th></tr>';
+    db.forEach((c, i) => {
+        table.innerHTML += `<tr>
+            <td>${c.no}</td><td>${c.jina}</td><td>${c.embassy}</td>
+            <td><button type="button" onclick="revokePassport(${i})" class="admin-btn">Banish</button></td>
+        </tr>`;
+    });
+}
+
+function revokePassport(index) {
+    if(confirm(`Banish ${db[index].jina} from the Empire? 💀`)) {
+        db.splice(index, 1);
+        localStorage.setItem('tseDB', JSON.stringify(db));
+        loadAdminData();
+        document.getElementById('liveCount').innerText = db.length;
+    }
+}
+
+function exportData() {
+    let csv = 'Passport No,Royal Name,Territory,Last Betrayal,Date Ennobled\n';
+    db.forEach(c => {
+        csv += `${c.no},"${c.jina}",${c.embassy},${c.oshwa},${c.date}\n`;
+    });
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'TeamSingleEmpire_RoyalCensus.csv'; a.click();
+}
+
+function clearDatabase() {
+    if(confirm("KING, SHALL WE DISSOLVE THE ENTIRE EMPIRE? 💀")) {
+        localStorage.removeItem('tseDB');
+        localStorage.setItem('tseCounter', '4');
+        db = [];
+        loadAdminData();
+        document.getElementById('liveCount').innerText = 0;
+    }
 }
 </script>
 
