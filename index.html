@@ -8,18 +8,19 @@
     :root { --gold: #D4AF37; --black: #0A0A0A; --red: #8B0000; }
     * { box-sizing: border-box; }
     body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 650px; margin: auto; }
- .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
+.royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
     h1 { font-family: 'Cinzel'; text-align: center; font-size: 28px; }
- .crown-main { font-size: 50px; text-align: center; }
+.crown-main { font-size: 50px; text-align: center; }
     input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--gold); background: #222; color: white; }
     button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; }
- .hidden { display: none; }
- .flex { display: flex; gap: 20px; align-items: flex-start; }
- .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
- .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
+.hidden { display: none; }
+.flex { display: flex; gap: 20px; align-items: flex-start; }
+.photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
+.stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
     table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
     td, th { border: 1px solid #B8941F; padding: 8px; text-align: left; }
- .admin-btn { background: var(--red); }
+.admin-btn { background: var(--red); }
+.preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
 </style>
 </head>
 <body>
@@ -35,6 +36,7 @@
     <input id="embassy" placeholder="Territory • Embassy yako">
     <label style="font-size:12px; color:#B8941F;">Official Portrait:</label>
     <input type="file" id="photo" accept="image/*">
+    <img id="photoPreview" class="preview hidden">
 
     <button type="button" onclick="generate()">👑 CLAIM CITIZENSHIP 👑</button>
     <button type="button" onclick="showAdmin()" style="background:#333; color:var(--gold);">ROYAL ADMIN</button>
@@ -72,10 +74,21 @@
 <script>
 // EMPIRE DATABASE
 let db = JSON.parse(localStorage.getItem('tseDB') || '[]');
-let counter = parseInt(localStorage.getItem('tseCounter') || '4'); // MR VOID ni TSE004
-
-// UPDATE LIVE COUNTER
+let counter = parseInt(localStorage.getItem('tseCounter') || '5'); // TSE005 ndio last
 document.getElementById('liveCount').innerText = db.length;
+
+// PHOTO PREVIEW - HII NDIO FIX KUU KING
+document.getElementById('photo').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if(file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('photoPreview').src = event.target.result;
+            document.getElementById('photoPreview').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+});
 
 function generate() {
     const jina = document.getElementById('jina').value.trim();
@@ -91,18 +104,50 @@ function generate() {
     counter++;
     const passNo = 'TSE' + String(counter).padStart(3, '0');
 
+    // COMPRESS PICHA KWANZA - HII INAFANYA IFANYE KAZI MOBILE
     if(photoFile) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            saveCitizen(passNo, jina, oshwa, embassy, e.target.result);
-        };
-        reader.onerror = function() {
-            saveCitizen(passNo, jina, oshwa, embassy, '');
-        };
-        reader.readAsDataURL(photoFile);
+        compressImage(photoFile, function(compressedDataUrl) {
+            saveCitizen(passNo, jina, oshwa, embassy, compressedDataUrl);
+        });
     } else {
         saveCitizen(passNo, jina, oshwa, embassy, '');
     }
+}
+
+// HII FUNCTION INAPUNGUZA SIZE YA PICHA - FIX YA MOBILE
+function compressImage(file, callback) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            // Punguza hadi 300px max
+            const maxSize = 300;
+            let width = img.width;
+            let height = img.height;
+            
+            if (width > height) {
+                if (width > maxSize) {
+                    height *= maxSize / width;
+                    width = maxSize;
+                }
+            } else {
+                if (height > maxSize) {
+                    width *= maxSize / height;
+                    height = maxSize;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            // Compress 70% quality
+            callback(canvas.toDataURL('image/jpeg', 0.7));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
 }
 
 function saveCitizen(passNo, jina, oshwa, embassy, photoData) {
@@ -173,7 +218,7 @@ function exportData() {
 function clearDatabase() {
     if(confirm("KING, SHALL WE DISSOLVE THE ENTIRE EMPIRE? 💀")) {
         localStorage.removeItem('tseDB');
-        localStorage.setItem('tseCounter', '4');
+        localStorage.setItem('tseCounter', '5');
         db = [];
         loadAdminData();
         document.getElementById('liveCount').innerText = 0;
