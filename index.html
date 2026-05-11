@@ -29,6 +29,7 @@
 .btn-group { display: flex; gap: 10px; }
 .btn-group button { flex: 1; }
 .status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
+#errorBox { background: #330000; border: 1px solid red; padding: 10px; margin: 10px 0; font-size: 11px; color: #FF6666; }
 </style>
 </head>
 <body>
@@ -39,15 +40,17 @@
     <p style="text-align:center; font-size:11px;">ROYAL eCITIZEN PORTAL • EST. 2026</p>
     <div class="stats">Loyal Subjects: <span id="liveCount">...</span> 👑</div>
     <div class="status-msg" id="statusMsg">Empire Database: CONNECTED ✅</div>
-    
+    <div id="errorBox" class="hidden"></div>
+
     <input type="text" id="jina" placeholder="Royal Name" maxlength="50">
     <input type="text" id="oshwa" placeholder="Date of Last Betrayal" maxlength="30">
     <input type="text" id="embassy" placeholder="Territory • Embassy yako" maxlength="50">
-    <label style="font-size:12px; color:#B8941F;">Official Portrait:</label>
+    <label style="font-size:12px; color:#B8941F;">Official Portrait - Weka picha ndogo:</label>
     <input type="file" id="photo" accept="image/*">
     <img id="photoPreview" class="preview hidden">
-    
+
     <button id="claimBtn" onclick="tengenezaPassport()">👑 CLAIM CITIZENSHIP 👑</button>
+    <button onclick="testDatabase()" style="background:#004400; color:#00FF00;">TEST DATABASE</button>
     <button onclick="funguaAdmin()" style="background:#333; color:var(--gold);">ROYAL ADMIN</button>
 </div>
 
@@ -94,7 +97,7 @@
 
   firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
-  
+
   let currentPassport = null;
   let citizenCount = 0;
 
@@ -103,9 +106,22 @@
       updateCounter();
   };
 
+  function showError(msg) {
+      document.getElementById('errorBox').innerText = 'ERROR: ' + msg;
+      document.getElementById('errorBox').classList.remove('hidden');
+      console.error(msg);
+  }
+
+  function testDatabase() {
+      db.ref('test/' + Date.now()).set({time: new Date().toString()})
+    .then(() => alert('DATABASE INAFANYA! ✅ Sasa jaribu na picha ndogo'))
+    .catch((error) => showError('Database test failed: ' + error.message));
+  }
+
   function previewPhoto(e) {
       const file = e.target.files[0];
       if(file) {
+          document.getElementById('errorBox').classList.add('hidden');
           const reader = new FileReader();
           reader.onload = function(event) {
               document.getElementById('photoPreview').src = event.target.result;
@@ -116,23 +132,31 @@
   }
 
   async function tengenezaPassport() {
+      document.getElementById('errorBox').classList.add('hidden');
       const jina = document.getElementById('jina').value.trim();
       const oshwa = document.getElementById('oshwa').value.trim();
       const embassy = document.getElementById('embassy').value.trim();
       const photoFile = document.getElementById('photo').files[0];
-      
+
       if (!jina ||!oshwa ||!embassy) {
-          alert('By Royal Decree: Jaza zote King! 👑');
+          showError('Jaza zote King! 👑');
           return;
       }
 
       document.getElementById('claimBtn').disabled = true;
       document.getElementById('claimBtn').innerText = 'DECREEING... ⏳';
-      
+
       const count = citizenCount + 1;
       const passNo = 'TSE' + String(count).padStart(3, '0');
-      
+
       if (photoFile) {
+          // Check size kwanza
+          if(photoFile.size > 2000000) {
+              showError('Picha ni kubwa sana! Tafuta picha chini ya 2MB ama piga screenshot ya picha');
+              document.getElementById('claimBtn').disabled = false;
+              document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
+              return;
+          }
           compressImage(photoFile, function(compressedDataUrl) {
               saveToFirebase(passNo, jina, oshwa, embassy, compressedDataUrl);
           });
@@ -148,33 +172,35 @@
           img.onload = function() {
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
-              
-              // Picha ndogo = 200px max, quality 50%
-              const maxSize = 200;
+
+              // 150px MAX - ndogo kabisa
+              const maxSize = 150;
               let width = img.width;
               let height = img.height;
-              
+
               if (width > height) {
-                  if (width > maxSize) { 
-                      height *= maxSize / width; 
-                      width = maxSize; 
+                  if (width > maxSize) {
+                      height *= maxSize / width;
+                      width = maxSize;
                   }
               } else {
-                  if (height > maxSize) { 
-                      width *= maxSize / height; 
-                      height = maxSize; 
+                  if (height > maxSize) {
+                      width *= maxSize / height;
+                      height = maxSize;
                   }
               }
-              
+
               canvas.width = width;
               canvas.height = height;
               ctx.drawImage(img, 0, 0, width, height);
-              
-              // 0.5 = 50% quality = picha ndogo sana
-              callback(canvas.toDataURL('image/jpeg', 0.5));
+
+              // 0.4 = 40% quality = ~15-25KB tu
+              callback(canvas.toDataURL('image/jpeg', 0.4));
           };
+          img.onerror = () => showError('Picha haikusoma. Jaribu picha ingine.');
           img.src = e.target.result;
       };
+      reader.onerror = () => showError('Kusoma picha kumefail.');
       reader.readAsDataURL(file);
   }
 
@@ -188,16 +214,16 @@
           date: new Date().toLocaleDateString(),
           timestamp: Date.now()
       };
-      
+
       db.ref('citizens/' + passNo).set(citizen)
-    .then(() => {
+  .then(() => {
             currentPassport = citizen;
             onyeshaPassport(citizen);
         })
-    .catch((error) => {
-            alert('Empire Error: ' + error.message + '\n\nPicha ni kubwa sana. Jaribu picha ndogo.');
+  .catch((error) => {
+            showError('Ku-save kumefail: ' + error.message + '\n\nSuluhisho: 1. Check Firebase Rules 2. Zima Brave Shields 3. Jaribu bila picha');
         })
-    .finally(() => {
+  .finally(() => {
             document.getElementById('claimBtn').disabled = false;
             document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
         });
@@ -217,6 +243,8 @@
       db.ref('citizens').on('value', (snapshot) => {
           citizenCount = snapshot.numChildren();
           document.getElementById('liveCount').innerText = citizenCount;
+      }, (error) => {
+          showError('Counter error: ' + error.message);
       });
   }
 
@@ -224,7 +252,7 @@
       if (!currentPassport) return;
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF();
-      
+
       doc.setFillColor(212, 175, 55);
       doc.rect(0, 0, 210, 30, 'F');
       doc.setTextColor(10, 10, 10);
@@ -232,7 +260,7 @@
       doc.text('TEAM SINGLE EMPIRE', 105, 15, { align: 'center' });
       doc.setFontSize(12);
       doc.text('ROYAL PASSPORT', 105, 23, { align: 'center' });
-      
+
       doc.setTextColor(0, 0, 0);
       doc.setFontSize(14);
       doc.text(`PASSPORT NO: ${currentPassport.no}`, 20, 50);
@@ -240,11 +268,11 @@
       doc.text(`STATUS: Certified Single`, 20, 70);
       doc.text(`EMBASSY: ${currentPassport.embassy}`, 20, 80);
       doc.text(`LAST BETRAYAL: ${currentPassport.oshwa}`, 20, 90);
-      
+
       if (currentPassport.photo) {
           doc.addImage(currentPassport.photo, 'JPEG', 140, 45, 50, 60);
       }
-      
+
       doc.setFontSize(10);
       doc.text('LONG LIVE THE EMPIRE • EST. 2026', 105, 280, { align: 'center' });
       doc.save(`TSE_Passport_${currentPassport.no}.pdf`);
@@ -266,7 +294,7 @@
           document.getElementById('totalCitizens').innerText = snapshot.numChildren();
           const table = document.getElementById('citizenTable');
           table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Action</th></tr>';
-          
+
           snapshot.forEach((child) => {
               const c = child.val();
               table.innerHTML += `<tr>
