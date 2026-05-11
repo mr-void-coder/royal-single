@@ -45,7 +45,7 @@
     <input type="text" id="jina" placeholder="Royal Name" maxlength="50">
     <input type="text" id="oshwa" placeholder="Date of Last Betrayal" maxlength="30">
     <input type="text" id="embassy" placeholder="Territory • Embassy yako" maxlength="50">
-    <label style="font-size:12px; color:#B8941F;">Official Portrait - Weka picha ndogo:</label>
+    <label style="font-size:12px; color:#B8941F;">Official Portrait - Weka picha ndogo/Screenshot:</label>
     <input type="file" id="photo" accept="image/*">
     <img id="photoPreview" class="preview hidden">
 
@@ -115,24 +115,31 @@
   function testDatabase() {
       document.getElementById('errorBox').classList.add('hidden');
       db.ref('test/' + Date.now()).set({time: new Date().toString()})
-  .then(() => alert('DATABASE INAFANYA! ✅ Sasa jaza details zako'))
-  .catch((error) => showError('Database test failed: ' + error.message));
+.then(() => alert('DATABASE INAFANYA! ✅ Sasa jaza details zako'))
+.catch((error) => showError('Database test failed: ' + error.message));
   }
 
   function previewPhoto(e) {
       const file = e.target.files[0];
       if(file) {
           document.getElementById('errorBox').classList.add('hidden');
+          const sizeKB = Math.round(file.size / 1024);
+          
           if(file.size > 5000000) {
-              showError('Picha ni kubwa sana! Tafuta chini ya 5MB.');
+              showError(`Picha ni kubwa sana: ${sizeKB}KB. Max ni 5000KB. Piga screenshot.`);
               document.getElementById('photo').value = '';
+              document.getElementById('photoPreview').classList.add('hidden');
               return;
           }
+          
           const reader = new FileReader();
           reader.onload = function(event) {
               document.getElementById('photoPreview').src = event.target.result;
               document.getElementById('photoPreview').classList.remove('hidden');
+              showError(`Picha imepakiwa: ${sizeKB}KB. Itacompress hadi ~20KB.`);
+              setTimeout(() => document.getElementById('errorBox').classList.add('hidden'), 3000);
           };
+          reader.onerror = () => showError('File haijasoma. Picha imeharibika.');
           reader.readAsDataURL(file);
       }
   }
@@ -145,7 +152,7 @@
               try {
                   const canvas = document.createElement('canvas');
                   const ctx = canvas.getContext('2d');
-                  const maxSize = 150;
+                  const maxSize = 120;
                   let width = img.width;
                   let height = img.height;
 
@@ -164,15 +171,17 @@
                   canvas.width = width;
                   canvas.height = height;
                   ctx.drawImage(img, 0, 0, width, height);
-                  callback(canvas.toDataURL('image/jpeg', 0.4));
+                  const compressed = canvas.toDataURL('image/jpeg', 0.3);
+                  console.log('Compressed size:', compressed.length);
+                  callback(compressed);
               } catch(err) {
-                  errorCallback('Compression imefail. Tutaendelea bila picha.');
+                  errorCallback('Compression imefail: ' + err.message);
               }
           };
-          img.onerror = () => errorCallback('Picha haijasoma. Ni corrupt. Tutaendelea bila picha.');
+          img.onerror = () => errorCallback('Picha ni mbovu. Format sio JPG/PNG halisi.');
           img.src = e.target.result;
       };
-      reader.onerror = () => errorCallback('Kusoma file kumefail. Tutaendelea bila picha.');
+      reader.onerror = () => errorCallback('Kusoma file kumefail.');
       reader.readAsDataURL(file);
   }
 
@@ -215,6 +224,14 @@
   }
 
   function saveToFirebase(passNo, jina, oshwa, embassy, photoData) {
+      if(photoData) {
+          const sizeKB = Math.round(photoData.length / 1024);
+          console.log('Saving photo size:', sizeKB, 'KB');
+          if(sizeKB > 100) {
+              showError('Picha bado ni kubwa: ' + sizeKB + 'KB. Tutajaribu ku-save...');
+          }
+      }
+      
       const citizen = {
           no: passNo,
           jina: jina,
@@ -229,9 +246,10 @@
 .then(() => {
           currentPassport = citizen;
           onyeshaPassport(citizen);
+          if(!photoData) showError('Passport imetoka BILA PICHA. Picha ilikuwa mbovu.');
       })
 .catch((error) => {
-          showError('Ku-save kumefail: ' + error.message + '\n\nSuluhisho: 1. Check Firebase Rules 2. Zima Brave Shields');
+          showError('Ku-save kumefail: ' + error.message);
       })
 .finally(() => {
           document.getElementById('claimBtn').disabled = false;
@@ -339,4 +357,4 @@
 </script>
 
 </body>
-</html>
+    </html>
