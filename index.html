@@ -13,25 +13,25 @@
     :root { --gold: #D4AF37; --black: #0A0A0A; --red: #8B0000; }
     * { box-sizing: border-box; }
     body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 650px; margin: auto; }
-.royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
+   .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
     h1 { font-family: 'Cinzel'; text-align: center; font-size: 28px; margin: 10px 0; }
-.crown-main { font-size: 50px; text-align: center; }
+   .crown-main { font-size: 50px; text-align: center; }
     input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--gold); background: #222; color: white; font-size: 14px; }
     button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-.hidden { display: none; }
-.flex { display: flex; gap: 20px; align-items: flex-start; }
-.photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
-.stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
+   .hidden { display: none; }
+   .flex { display: flex; gap: 20px; align-items: flex-start; }
+   .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
+   .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
     table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
     td, th { border: 1px solid #B8941F; padding: 8px; text-align: left; }
-.admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
-.preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
-.btn-group { display: flex; gap: 10px; }
-.btn-group button { flex: 1; }
-.status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
-#errorBox { background: #330000; border: 1px solid red; padding: 10px; margin: 10px 0; font-size: 11px; color: #FF6666; border-radius: 8px; }
-.note { font-size: 10px; color: #B8941F; text-align: center; margin-top: 5px; }
+   .admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
+   .preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
+   .btn-group { display: flex; gap: 10px; }
+   .btn-group button { flex: 1; }
+   .status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
+    #errorBox { background: #330000; border: 1px solid red; padding: 10px; margin: 10px 0; font-size: 11px; color: #FF6666; border-radius: 8px; }
+   .note { font-size: 10px; color: #B8941F; text-align: center; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -82,7 +82,7 @@
     <button onclick="exportCSV()">EXPORT ROYAL CENSUS</button>
     <h3>Book of Citizens:</h3>
     <table id="citizenTable">
-        <tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Action</th></tr>
+        <tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Last Betrayal</th><th>Date</th><th>Action</th></tr>
     </table>
     <button onclick="location.reload()">CLOSE CHAMBER</button>
 </div>
@@ -119,8 +119,8 @@
   function testDatabase() {
       document.getElementById('errorBox').classList.add('hidden');
       db.ref('test/' + Date.now()).set({time: new Date().toString()})
-.then(() => alert('DATABASE INAFANYA! ✅ Sasa jaza details zako'))
-.catch((error) => showError('Database test failed: ' + error.message));
+     .then(() => alert('DATABASE INAFANYA! ✅ Sasa jaza details zako'))
+     .catch((error) => showError('Database test failed: ' + error.message));
   }
 
   function previewPhoto(e) {
@@ -155,10 +155,17 @@
       document.getElementById('claimBtn').disabled = true;
       document.getElementById('claimBtn').innerText = 'DECREEING... ⏳';
 
-      const count = citizenCount + 1;
-      const passNo = 'TSE' + String(count).padStart(3, '0');
-      
-      saveToFirebase(passNo, jina, oshwa, embassy);
+      db.ref('citizens').orderByKey().limitToLast(1).once('value', (snapshot) => {
+          let lastNum = 0;
+          snapshot.forEach((child) => {
+              const lastPassNo = child.val().no;
+              lastNum = parseInt(lastPassNo.replace('TSE', ''));
+          });
+          const count = lastNum + 1;
+          const passNo = 'TSE' + String(count).padStart(3, '0');
+          
+          saveToFirebase(passNo, jina, oshwa, embassy);
+      });
   }
 
   function saveToFirebase(passNo, jina, oshwa, embassy) {
@@ -173,14 +180,14 @@
       };
 
       db.ref('citizens/' + passNo).set(citizen)
-.then(() => {
+     .then(() => {
           currentPassport = citizen;
           onyeshaPassport(citizen);
       })
-.catch((error) => {
+     .catch((error) => {
           showError('Ku-save kumefail: ' + error.message);
       })
-.finally(() => {
+     .finally(() => {
           document.getElementById('claimBtn').disabled = false;
           document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
       });
@@ -233,11 +240,19 @@
       doc.setFontSize(11);
       doc.setFont('times', 'italic');
       doc.text('BY DECREE OF THE KING', pageW / 2, 46, { align: 'center' });
-      doc.setFontSize(28);
-      doc.text('👑', pageW / 2, 62, { align: 'center' });
+      
+      doc.setDrawColor(212, 175, 55);
+      doc.setFillColor(212, 175, 55);
+      doc.setLineWidth(1);
+      doc.circle(pageW/2 - 8, 58, 2, 'F');
+      doc.circle(pageW/2, 54, 3, 'F');
+      doc.circle(pageW/2 + 8, 58, 2, 'F');
+      doc.rect(pageW/2 - 12, 60, 24, 3, 'F');
+      
       doc.setTextColor(212, 175, 55, 0.05);
-      doc.setFontSize(100);
-      doc.text('👑', pageW / 2, pageH / 2 + 10, { align: 'center' });
+      doc.setFontSize(80);
+      doc.setFont('times', 'bold');
+      doc.text('TSE', pageW / 2, pageH / 2 + 10, { align: 'center' });
       
       if (currentPhotoDataUrl) {
           try {
@@ -288,7 +303,6 @@
       doc.setFont('courier', 'bold');
       doc.setTextColor(255, 255, 255);
       doc.text(currentPassport.embassy.toUpperCase(), 20, y + 6);
-      doc.text('💀', 100, y + 6);
       doc.line(20, y + 8, 110, y + 8);
       
       y += lineGap + 6;
@@ -301,11 +315,15 @@
       doc.line(20, y + 8, 110, y + 8);
       
       const verifyUrl = window.location.origin + '/verify.html?no=' + currentPassport.no;
-      const qrCanvas = document.createElement('canvas');
-      new QRCode(qrCanvas, {
+      const qrDiv = document.createElement('div');
+      qrDiv.style.position = 'absolute';
+      qrDiv.style.left = '-9999px';
+      document.body.appendChild(qrDiv);
+      
+      new QRCode(qrDiv, {
           text: verifyUrl,
-          width: 128,
-          height: 128,
+          width: 256,
+          height: 256,
           colorDark: "#000000",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.H
@@ -313,24 +331,36 @@
       
       setTimeout(() => {
           try {
-              const qrDataUrl = qrCanvas.toDataURL('image/png');
-              doc.addImage(qrDataUrl, 'PNG', 20, 190, 35, 35);
-              doc.setFontSize(7);
+              const qrImg = qrDiv.querySelector('img') || qrDiv.querySelector('canvas');
+              if (qrImg) {
+                  const qrDataUrl = qrImg.src || qrImg.toDataURL('image/png');
+                  doc.addImage(qrDataUrl, 'PNG', 20, 190, 35, 35);
+                  doc.setFontSize(7);
+                  doc.setTextColor(212, 175, 55);
+                  doc.text('SCAN TO VERIFY', 37.5, 230, { align: 'center' });
+              }
+          } catch(e) { 
+              console.log('QR Error:', e);
+              doc.setFontSize(6);
               doc.setTextColor(212, 175, 55);
-              doc.text('SCAN TO VERIFY', 37.5, 230, { align: 'center' });
-          } catch(e) { console.log('QR Error:', e); }
+              doc.text('Verify: ' + verifyUrl, 20, 210, { maxWidth: 80 });
+          }
+          
+          document.body.removeChild(qrDiv);
           
           doc.setDrawColor(212, 175, 55);
           doc.setLineWidth(1.5);
           doc.circle(90, 207, 18);
           doc.setLineWidth(0.5);
           doc.circle(90, 207, 15);
-          doc.setFontSize(16);
-          doc.setTextColor(212, 175, 55);
-          doc.text('👑', 90, 211, { align: 'center' });
+          doc.setFillColor(212, 175, 55);
+          doc.circle(90 - 3, 205, 1.5, 'F');
+          doc.circle(90, 203, 2, 'F');
+          doc.circle(90 + 3, 205, 1.5, 'F');
+          doc.rect(90 - 5, 206, 10, 2, 'F');
           doc.setFontSize(6);
           doc.setFont('times', 'bold');
-          doc.text('THE KING', 90, 230, { align: 'center' });
+          doc.text('ROYAL SEAL', 90, 230, { align: 'center' });
           
           doc.setDrawColor(212, 175, 55);
           doc.line(120, 215, 185, 215);
@@ -358,7 +388,7 @@
           document.querySelector('button[onclick="downloadPDF()"]').innerText = '📜 DOWNLOAD PDF';
           document.querySelector('button[onclick="downloadPDF()"]').disabled = false;
           
-      }, 500);
+      }, 600);
   }
 
   function funguaAdmin() {
@@ -376,7 +406,7 @@
       db.ref('citizens').orderByChild('timestamp').on('value', (snapshot) => {
           document.getElementById('totalCitizens').innerText = snapshot.numChildren();
           const table = document.getElementById('citizenTable');
-          table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Action</th></tr>';
+          table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Last Betrayal</th><th>Date</th><th>Action</th></tr>';
 
           snapshot.forEach((child) => {
               const c = child.val();
@@ -384,6 +414,8 @@
                   <td>${c.no}</td>
                   <td>${c.jina}</td>
                   <td>${c.embassy}</td>
+                  <td style="color:#FF0000;">${c.oshwa}</td>
+                  <td>${c.date}</td>
                   <td><button onclick="banishCitizen('${c.no}')" class="admin-btn">Banish</button></td>
               </tr>`;
           });
@@ -412,4 +444,4 @@
 </script>
 
 </body>
-</html>
+    </html>
