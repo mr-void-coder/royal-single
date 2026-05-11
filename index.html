@@ -30,6 +30,7 @@
 .btn-group button { flex: 1; }
 .status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
 #errorBox { background: #330000; border: 1px solid red; padding: 10px; margin: 10px 0; font-size: 11px; color: #FF6666; border-radius: 8px; }
+.note { font-size: 10px; color: #B8941F; text-align: center; margin-top: 5px; }
 </style>
 </head>
 <body>
@@ -45,8 +46,9 @@
     <input type="text" id="jina" placeholder="Royal Name" maxlength="50">
     <input type="text" id="oshwa" placeholder="Date of Last Betrayal" maxlength="30">
     <input type="text" id="embassy" placeholder="Territory • Embassy yako" maxlength="50">
-    <label style="font-size:12px; color:#B8941F;">Official Portrait:</label>
+    <label style="font-size:12px; color:#B8941F;">Official Portrait - Kwa Passport Tu:</label>
     <input type="file" id="photo" accept="image/*">
+    <p class="note">Picha haitasave kwa database. Inaonekana kwa passport na PDF tu.</p>
     <img id="photoPreview" class="preview hidden">
 
     <button id="claimBtn" onclick="tengenezaPassport()">👑 CLAIM CITIZENSHIP 👑</button>
@@ -100,6 +102,7 @@
 
   let currentPassport = null;
   let citizenCount = 0;
+  let currentPhotoDataUrl = ''; // Picha ya muda - haitasave kwa DB
 
   window.onload = function() {
       document.getElementById('photo').addEventListener('change', previewPhoto);
@@ -123,53 +126,19 @@
       const file = e.target.files[0];
       if(file) {
           document.getElementById('errorBox').classList.add('hidden');
-          const sizeKB = Math.round(file.size / 1024);
-          
-          if(file.size > 10000000) {
-              showError(`Picha ni kubwa sana: ${sizeKB}KB. Max ni 10MB. Piga screenshot.`);
-              document.getElementById('photo').value = '';
-              document.getElementById('photoPreview').classList.add('hidden');
-              return;
-          }
           
           const reader = new FileReader();
           reader.onload = function(event) {
-              document.getElementById('photoPreview').src = event.target.result;
+              currentPhotoDataUrl = event.target.result; // Hifadhi kwa PDF
+              document.getElementById('photoPreview').src = currentPhotoDataUrl;
               document.getElementById('photoPreview').classList.remove('hidden');
-              showError(`Picha imepakiwa: ${sizeKB}KB. Ita-upload kwa Imgur.`);
-              setTimeout(() => document.getElementById('errorBox').classList.add('hidden'), 3000);
           };
           reader.onerror = () => showError('File haijasoma. Picha imeharibika.');
           reader.readAsDataURL(file);
+      } else {
+          currentPhotoDataUrl = '';
+          document.getElementById('photoPreview').classList.add('hidden');
       }
-  }
-
-  function uploadKwaImgur(file, callback) {
-      showError('Uploading picha kwa Imgur... ⏳');
-      const formData = new FormData();
-      formData.append('image', file);
-
-      fetch('https://api.imgur.com/3/image', {
-          method: 'POST',
-          headers: {
-              Authorization: 'Client-ID 546c25a59c58ad7'
-          },
-          body: formData
-      })
-.then(res => res.json())
-.then(result => {
-          if(result.success) {
-              document.getElementById('errorBox').classList.add('hidden');
-              callback(result.data.link);
-          } else {
-              showError('Imgur imekataa: ' + (result.data.error || 'Unknown error'));
-              callback('');
-          }
-      })
-.catch(err => {
-          showError('Upload imefail. Tutaendelea bila picha.');
-          callback('');
-      });
   }
 
   async function tengenezaPassport() {
@@ -177,7 +146,6 @@
       const jina = document.getElementById('jina').value.trim();
       const oshwa = document.getElementById('oshwa').value.trim();
       const embassy = document.getElementById('embassy').value.trim();
-      const photoFile = document.getElementById('photo').files[0];
 
       if (!jina ||!oshwa ||!embassy) {
           showError('Jaza zote King! 👑');
@@ -189,23 +157,18 @@
 
       const count = citizenCount + 1;
       const passNo = 'TSE' + String(count).padStart(3, '0');
-
-      if (photoFile) {
-          uploadKwaImgur(photoFile, function(imageUrl) {
-              saveToFirebase(passNo, jina, oshwa, embassy, imageUrl);
-          });
-      } else {
-          saveToFirebase(passNo, jina, oshwa, embassy, '');
-      }
+      
+      // SAVE KWA FIREBASE BILA PICHA
+      saveToFirebase(passNo, jina, oshwa, embassy);
   }
 
-  function saveToFirebase(passNo, jina, oshwa, embassy, photoUrl) {
+  function saveToFirebase(passNo, jina, oshwa, embassy) {
       const citizen = {
           no: passNo,
           jina: jina,
           oshwa: oshwa,
           embassy: embassy,
-          photo: photoUrl,
+          photo: '', // HATUWEKI PICHA HAPA
           date: new Date().toLocaleDateString(),
           timestamp: Date.now()
       };
@@ -213,8 +176,7 @@
       db.ref('citizens/' + passNo).set(citizen)
 .then(() => {
           currentPassport = citizen;
-          onyeshaPassport(citizen);
-          if(!photoUrl) showError('Passport imetoka BILA PICHA. Upload ilifail.');
+          onyeshaPassport(citizen); // Picha itatoka kwa currentPhotoDataUrl
       })
 .catch((error) => {
           showError('Ku-save kumefail: ' + error.message);
@@ -232,7 +194,8 @@
       document.getElementById('passJina').innerText = c.jina.toUpperCase();
       document.getElementById('passEmbassy').innerText = c.embassy;
       document.getElementById('passOshwa').innerText = c.oshwa;
-      document.getElementById('pichaYangu').src = c.photo || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="110"><rect fill="%23111"/><text x="50%" y="50%" fill="%23D4AF37" font-size="10" text-anchor="middle" dy=".3em">SUBJECT</text></svg>';
+      // TUMIA PICHA YA MUDA
+      document.getElementById('pichaYangu').src = currentPhotoDataUrl || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="110"><rect fill="%23111"/><text x="50%" y="50%" fill="%23D4AF37" font-size="10" text-anchor="middle" dy=".3em">SUBJECT</text></svg>';
   }
 
   function updateCounter() {
@@ -265,22 +228,14 @@
       doc.text(`EMBASSY: ${currentPassport.embassy}`, 20, 80);
       doc.text(`LAST BETRAYAL: ${currentPassport.oshwa}`, 20, 90);
 
-      if (currentPassport.photo) {
-          // Imgur link inafanya na jsPDF
-          const img = new Image();
-          img.crossOrigin = 'Anonymous';
-          img.onload = function() {
-              doc.addImage(img, 'JPEG', 140, 45, 50, 60);
-              doc.setFontSize(10);
-              doc.text('LONG LIVE THE EMPIRE • EST. 2026', 105, 280, { align: 'center' });
-              doc.save(`TSE_Passport_${currentPassport.no}.pdf`);
-          };
-          img.src = currentPassport.photo;
-      } else {
-          doc.setFontSize(10);
-          doc.text('LONG LIVE THE EMPIRE • EST. 2026', 105, 280, { align: 'center' });
-          doc.save(`TSE_Passport_${currentPassport.no}.pdf`);
+      // TUMIA PICHA YA MUDA KWA PDF
+      if (currentPhotoDataUrl) {
+          doc.addImage(currentPhotoDataUrl, 'JPEG', 140, 45, 50, 60);
       }
+
+      doc.setFontSize(10);
+      doc.text('LONG LIVE THE EMPIRE • EST. 2026', 105, 280, { align: 'center' });
+      doc.save(`TSE_Passport_${currentPassport.no}.pdf`);
   }
 
   function funguaAdmin() {
@@ -320,10 +275,10 @@
 
   function exportCSV() {
       db.ref('citizens').once('value', (snapshot) => {
-          let csv = 'Passport No,Royal Name,Territory,Last Betrayal,Date Ennobled,Photo URL\n';
+          let csv = 'Passport No,Royal Name,Territory,Last Betrayal,Date Ennobled\n';
           snapshot.forEach((child) => {
               const c = child.val();
-              csv += `${c.no},"${c.jina}",${c.embassy},${c.oshwa},${c.date},${c.photo || 'N/A'}\n`;
+              csv += `${c.no},"${c.jina}",${c.embassy},${c.oshwa},${c.date}\n`;
           });
           const blob = new Blob([csv], {type: 'text/csv'});
           const url = window.URL.createObjectURL(blob);
