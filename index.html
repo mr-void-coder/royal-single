@@ -7,29 +7,28 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
     :root { --gold: #D4AF37; --black: #0A0A0A; --red: #8B0000; }
     * { box-sizing: border-box; }
     body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 650px; margin: auto; }
-   .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
+ .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
     h1 { font-family: 'Cinzel'; text-align: center; font-size: 28px; margin: 10px 0; }
-   .crown-main { font-size: 50px; text-align: center; }
+ .crown-main { font-size: 50px; text-align: center; }
     input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--gold); background: #222; color: white; font-size: 14px; }
-    button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; transition: 0.3s; }
-    button:hover { opacity: 0.9; }
+    button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-   .hidden { display: none; }
-   .flex { display: flex; gap: 20px; align-items: flex-start; }
-   .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
-   .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
+ .hidden { display: none; }
+ .flex { display: flex; gap: 20px; align-items: flex-start; }
+ .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
+ .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
     table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
     td, th { border: 1px solid #B8941F; padding: 8px; text-align: left; }
-   .admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
-   .preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
-   .btn-group { display: flex; gap: 10px; }
-   .btn-group button { flex: 1; }
-   .status-msg { text-align: center; font-size: 12px; color: #B8941F; margin: 10px 0; }
+ .admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
+ .preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
+ .btn-group { display: flex; gap: 10px; }
+ .btn-group button { flex: 1; }
+ .status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
 </style>
 </head>
 <body>
@@ -39,7 +38,7 @@
     <h1>TEAM SINGLE EMPIRE</h1>
     <p style="text-align:center; font-size:11px;">ROYAL eCITIZEN PORTAL • EST. 2026</p>
     <div class="stats">Loyal Subjects: <span id="liveCount">...</span> 👑</div>
-    <div class="status-msg" id="statusMsg">Connecting to Empire Database...</div>
+    <div class="status-msg" id="statusMsg">Empire Database: CONNECTED ✅</div>
     
     <input type="text" id="jina" placeholder="Royal Name" maxlength="50">
     <input type="text" id="oshwa" placeholder="Date of Last Betrayal" maxlength="30">
@@ -83,41 +82,27 @@
 </div>
 
 <script>
-  // FIREBASE CONFIG - TEAM SINGLE EMPIRE
+  // FIREBASE CONFIG - SINGLE-EMPIRE PROJECT
   const firebaseConfig = {
-    apiKey: "AIzaSyCEIZoXam2fFfm5xZuCiZtYh9skxIQ7MEw",
-    authDomain: "team-single.firebaseapp.com",
-    databaseURL: "https://team-single-default-rtdb.firebaseio.com",
-    projectId: "team-single",
-    storageBucket: "team-single.firebasestorage.app",
-    messagingSenderId: "188002017271",
-    appId: "1:188002017271:web:312df628f5aedcc42dd8f2"
+    apiKey: "AIzaSyAmXKbyLJmf2IU1hS8RI0uAE5LWgkAvovI",
+    authDomain: "single-empire.firebaseapp.com",
+    databaseURL: "https://single-empire-default-rtdb.firebaseio.com",
+    projectId: "single-empire",
+    storageBucket: "single-empire.firebasestorage.app",
+    messagingSenderId: "719163390473",
+    appId: "1:719163390473:web:857798e381fb16456616d8"
   };
 
-  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
+  const db = firebase.database();
   
   let currentPassport = null;
+  let citizenCount = 0;
 
-  // Start when page loads
   window.onload = function() {
       document.getElementById('photo').addEventListener('change', previewPhoto);
-      checkConnection();
       updateCounter();
   };
-
-  function checkConnection() {
-      db.collection("citizens").limit(1).get()
-       .then(() => {
-            document.getElementById('statusMsg').innerText = 'Empire Database: CONNECTED ✅';
-            document.getElementById('statusMsg').style.color = '#00FF00';
-        })
-       .catch((error) => {
-            document.getElementById('statusMsg').innerText = 'Database Error: Zima Brave Shields! 🦁';
-            document.getElementById('statusMsg').style.color = '#FF0000';
-        });
-  }
 
   function previewPhoto(e) {
       const file = e.target.files[0];
@@ -145,22 +130,15 @@
       document.getElementById('claimBtn').disabled = true;
       document.getElementById('claimBtn').innerText = 'DECREEING... ⏳';
       
-      try {
-          const snapshot = await db.collection("citizens").get();
-          const count = snapshot.size + 1;
-          const passNo = 'TSE' + String(count).padStart(3, '0');
-          
-          if (photoFile) {
-              compressImage(photoFile, async function(compressedDataUrl) {
-                  await saveToFirebase(passNo, jina, oshwa, embassy, compressedDataUrl);
-              });
-          } else {
-              await saveToFirebase(passNo, jina, oshwa, embassy, '');
-          }
-      } catch(error) {
-          alert('Empire Error: ' + error.message + '\n\nSuluhisho:\n1. Zima Brave Shields 🦁\n2. Check Firebase Rules zime-publish');
-          document.getElementById('claimBtn').disabled = false;
-          document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
+      const count = citizenCount + 1;
+      const passNo = 'TSE' + String(count).padStart(3, '0');
+      
+      if (photoFile) {
+          compressImage(photoFile, function(compressedDataUrl) {
+              saveToFirebase(passNo, jina, oshwa, embassy, compressedDataUrl);
+          });
+      } else {
+          saveToFirebase(passNo, jina, oshwa, embassy, '');
       }
   }
 
@@ -189,7 +167,7 @@
       reader.readAsDataURL(file);
   }
 
-  async function saveToFirebase(passNo, jina, oshwa, embassy, photoData) {
+  function saveToFirebase(passNo, jina, oshwa, embassy, photoData) {
       const citizen = {
           no: passNo,
           jina: jina,
@@ -197,13 +175,21 @@
           embassy: embassy,
           photo: photoData,
           date: new Date().toLocaleDateString(),
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+          timestamp: Date.now()
       };
       
-      await db.collection("citizens").add(citizen);
-      currentPassport = citizen;
-      onyeshaPassport(citizen);
-      updateCounter();
+      db.ref('citizens/' + passNo).set(citizen)
+     .then(() => {
+            currentPassport = citizen;
+            onyeshaPassport(citizen);
+        })
+     .catch((error) => {
+            alert('Empire Error: ' + error.message);
+        })
+     .finally(() => {
+            document.getElementById('claimBtn').disabled = false;
+            document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
+        });
   }
 
   function onyeshaPassport(c) {
@@ -216,13 +202,11 @@
       document.getElementById('pichaYangu').src = c.photo || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="90" height="110"><rect fill="%23111"/><text x="50%" y="50%" fill="%23D4AF37" font-size="10" text-anchor="middle" dy=".3em">SUBJECT</text></svg>';
   }
 
-  async function updateCounter() {
-      try {
-          const snapshot = await db.collection("citizens").get();
-          document.getElementById('liveCount').innerText = snapshot.size;
-      } catch(error) {
-          document.getElementById('liveCount').innerText = '0';
-      }
+  function updateCounter() {
+      db.ref('citizens').on('value', (snapshot) => {
+          citizenCount = snapshot.numChildren();
+          document.getElementById('liveCount').innerText = citizenCount;
+      });
   }
 
   function downloadPDF() {
@@ -255,7 +239,7 @@
       doc.save(`TSE_Passport_${currentPassport.no}.pdf`);
   }
 
-  async function funguaAdmin() {
+  function funguaAdmin() {
       const pass = prompt("Speak the Royal Password:");
       if (pass!== "smokie2026") {
           alert("Treason! Only the King may enter! 💀👑");
@@ -266,44 +250,44 @@
       loadAdminData();
   }
 
-  async function loadAdminData() {
-      const snapshot = await db.collection("citizens").orderBy("timestamp").get();
-      document.getElementById('totalCitizens').innerText = snapshot.size;
-      const table = document.getElementById('citizenTable');
-      table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Action</th></tr>';
-      
-      snapshot.forEach((doc) => {
-          const c = doc.data();
-          table.innerHTML += `<tr>
-              <td>${c.no}</td>
-              <td>${c.jina}</td>
-              <td>${c.embassy}</td>
-              <td><button onclick="banishCitizen('${doc.id}')" class="admin-btn">Banish</button></td>
-          </tr>`;
+  function loadAdminData() {
+      db.ref('citizens').orderByChild('timestamp').on('value', (snapshot) => {
+          document.getElementById('totalCitizens').innerText = snapshot.numChildren();
+          const table = document.getElementById('citizenTable');
+          table.innerHTML = '<tr><th>No</th><th>Royal Name</th><th>Territory</th><th>Action</th></tr>';
+          
+          snapshot.forEach((child) => {
+              const c = child.val();
+              table.innerHTML += `<tr>
+                  <td>${c.no}</td>
+                  <td>${c.jina}</td>
+                  <td>${c.embassy}</td>
+                  <td><button onclick="banishCitizen('${c.no}')" class="admin-btn">Banish</button></td>
+              </tr>`;
+          });
       });
   }
 
-  async function banishCitizen(docId) {
+  function banishCitizen(passNo) {
       if (confirm("Banish this subject from the Empire? 💀")) {
-          await db.collection("citizens").doc(docId).delete();
-          loadAdminData();
-          updateCounter();
+          db.ref('citizens/' + passNo).remove();
       }
   }
 
-  async function exportCSV() {
-      const snapshot = await db.collection("citizens").get();
-      let csv = 'Passport No,Royal Name,Territory,Last Betrayal,Date Ennobled\n';
-      snapshot.forEach((doc) => {
-          const c = doc.data();
-          csv += `${c.no},"${c.jina}",${c.embassy},${c.oshwa},${c.date}\n`;
+  function exportCSV() {
+      db.ref('citizens').once('value', (snapshot) => {
+          let csv = 'Passport No,Royal Name,Territory,Last Betrayal,Date Ennobled\n';
+          snapshot.forEach((child) => {
+              const c = child.val();
+              csv += `${c.no},"${c.jina}",${c.embassy},${c.oshwa},${c.date}\n`;
+          });
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'TeamSingleEmpire_RoyalCensus.csv'; a.click();
       });
-      const blob = new Blob([csv], {type: 'text/csv'});
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'TeamSingleEmpire_RoyalCensus.csv'; a.click();
   }
 </script>
 
 </body>
-</html>
+    </html>
