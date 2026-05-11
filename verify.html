@@ -1,33 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>TSE Passport Verification</title>
+<title>Verify TSE Passport</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Montserrat&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 <style>
     :root { --gold: #D4AF37; --black: #0A0A0A; }
-    body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 20px; max-width: 500px; margin: auto; text-align: center; }
-   .card { background: #111; padding: 30px; border-radius: 15px; border: 2px solid var(--gold); }
-    h1 { font-family: 'Cinzel'; font-size: 26px; }
-   .crown { font-size: 60px; }
-   .status-ok { color: #00FF00; font-size: 24px; font-weight: 700; margin: 20px 0; }
-   .status-bad { color: #FF0000; font-size: 24px; font-weight: 700; margin: 20px 0; }
-   .detail { text-align: left; margin: 10px 0; font-size: 14px; }
-   .label { color: #B8941F; }
-   .seal { font-size: 40px; margin: 20px 0; }
+    body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 20px; text-align: center; }
+    h1 { font-family: 'Cinzel'; }
+   .card { background: #111; padding: 30px; border-radius: 15px; border: 2px solid var(--gold); max-width: 500px; margin: 20px auto; }
+   .valid { color: #00FF00; font-size: 24px; font-weight: bold; }
+   .invalid { color: #FF0000; font-size: 24px; font-weight: bold; }
+   .detail { text-align: left; margin: 10px 0; }
 </style>
 </head>
 <body>
-
-<div class="card" id="result">
-    <div class="crown">👑</div>
-    <h1>TEAM SINGLE EMPIRE</h1>
-    <p>PASSPORT VERIFICATION</p>
-    <div id="content">Loading... ⏳</div>
-</div>
+    <h1>👑 TEAM SINGLE EMPIRE 👑</h1>
+    <h2>PASSPORT VERIFICATION</h2>
+    <div class="card" id="result">Loading...</div>
 
 <script>
   const firebaseConfig = {
@@ -44,36 +37,33 @@
   const db = firebase.database();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const passNo = urlParams.get('no');
+  const passportNo = urlParams.get('no');
 
-  if (!passNo) {
-      document.getElementById('content').innerHTML = '<div class="status-bad">INVALID REQUEST 💀</div>';
+  if (!passportNo) {
+    document.getElementById('result').innerHTML = '<p class="invalid">❌ NO PASSPORT NUMBER PROVIDED</p>';
   } else {
-      db.ref('citizens/' + passNo).once('value', (snapshot) => {
-          if (snapshot.exists()) {
-              const c = snapshot.val();
-              document.getElementById('content').innerHTML = `
-                  <div class="status-ok">✅ PASSPORT VERIFIED</div>
-                  <div class="seal">👑</div>
-                  <div class="detail"><span class="label">PASSPORT NO:</span> ${c.no}</div>
-                  <div class="detail"><span class="label">ROYAL NAME:</span> ${c.jina.toUpperCase()}</div>
-                  <div class="detail"><span class="label">STATUS:</span> Certified Single</div>
-                  <div class="detail"><span class="label">EMBASSY:</span> ${c.embassy}</div>
-                  <div class="detail"><span class="label">DATE DECREED:</span> ${c.date}</div>
-                  <br>
-                  <p style="font-size:11px; color:#B8941F;">This passport is officially decreed by the Team Single Empire.</p>
-              `;
-          } else {
-              document.getElementById('content').innerHTML = `
-                  <div class="status-bad">❌ PASSPORT REVOKED</div>
-                  <div class="seal">💀</div>
-                  <p>Passport No: ${passNo}</p>
-                  <p style="font-size:11px; color:#FF6666;">This subject has been banished or does not exist.</p>
-              `;
-          }
+    db.ref('citizens/' + passportNo).once('value')
+     .then(snap => {
+        if (snap.exists()) {
+          const c = snap.val();
+          document.getElementById('result').innerHTML = `
+            <p class="valid">✅ VERIFIED CITIZEN</p>
+            <div class="detail"><b>PASSPORT NO:</b> ${c.no}</div>
+            <div class="detail"><b>ROYAL NAME:</b> ${c.jina.toUpperCase()}</div>
+            <div class="detail"><b>STATUS:</b> Certified Single</div>
+            <div class="detail"><b>EMBASSY:</b> ${(c.embassy || 'N/A').toUpperCase()}</div>
+            <div class="detail"><b>LAST BETRAYAL:</b> ${c.oshwa}</div>
+            <div class="detail"><b>DECREED:</b> ${c.date}</div>
+            <p style="margin-top:20px; font-size:12px;">LONG LIVE THE EMPIRE</p>
+          `;
+        } else {
+          document.getElementById('result').innerHTML = '<p class="invalid">❌ FAKE PASSPORT<br>This citizen does not exist in the Empire</p>';
+        }
+      })
+     .catch(err => {
+        document.getElementById('result').innerHTML = '<p class="invalid">❌ DATABASE ERROR</p>';
       });
   }
 </script>
-
 </body>
 </html>
