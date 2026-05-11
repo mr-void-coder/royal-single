@@ -12,23 +12,23 @@
     :root { --gold: #D4AF37; --black: #0A0A0A; --red: #8B0000; }
     * { box-sizing: border-box; }
     body { font-family: 'Montserrat'; background: var(--black); color: var(--gold); padding: 15px; max-width: 650px; margin: auto; }
- .royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
+.royal-card { background: #111; padding: 25px; border-radius: 15px; border: 2px solid var(--gold); margin-bottom: 20px; }
     h1 { font-family: 'Cinzel'; text-align: center; font-size: 28px; margin: 10px 0; }
- .crown-main { font-size: 50px; text-align: center; }
+.crown-main { font-size: 50px; text-align: center; }
     input, button { width: 100%; padding: 14px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--gold); background: #222; color: white; font-size: 14px; }
     button { background: var(--gold); color: var(--black); font-weight: 700; cursor: pointer; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
- .hidden { display: none; }
- .flex { display: flex; gap: 20px; align-items: flex-start; }
- .photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
- .stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
+.hidden { display: none; }
+.flex { display: flex; gap: 20px; align-items: flex-start; }
+.photo-frame { width: 90px; height: 110px; border: 3px solid var(--gold); background: #000; object-fit: cover; }
+.stats { text-align: center; font-size: 14px; margin: 10px 0; color: #B8941F; }
     table { width: 100%; font-size: 11px; border-collapse: collapse; margin-top: 15px; }
     td, th { border: 1px solid #B8941F; padding: 8px; text-align: left; }
- .admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
- .preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
- .btn-group { display: flex; gap: 10px; }
- .btn-group button { flex: 1; }
- .status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
+.admin-btn { background: var(--red); padding: 6px; font-size: 11px; }
+.preview { width: 60px; height: 60px; border: 1px solid var(--gold); object-fit: cover; margin: 5px 0; }
+.btn-group { display: flex; gap: 10px; }
+.btn-group button { flex: 1; }
+.status-msg { text-align: center; font-size: 12px; color: #00FF00; margin: 10px 0; }
 </style>
 </head>
 <body>
@@ -82,7 +82,6 @@
 </div>
 
 <script>
-  // FIREBASE CONFIG - SINGLE-EMPIRE PROJECT
   const firebaseConfig = {
     apiKey: "AIzaSyAmXKbyLJmf2IU1hS8RI0uAE5LWgkAvovI",
     authDomain: "single-empire.firebaseapp.com",
@@ -149,18 +148,30 @@
           img.onload = function() {
               const canvas = document.createElement('canvas');
               const ctx = canvas.getContext('2d');
-              const maxSize = 300;
+              
+              // Picha ndogo = 200px max, quality 50%
+              const maxSize = 200;
               let width = img.width;
               let height = img.height;
+              
               if (width > height) {
-                  if (width > maxSize) { height *= maxSize / width; width = maxSize; }
+                  if (width > maxSize) { 
+                      height *= maxSize / width; 
+                      width = maxSize; 
+                  }
               } else {
-                  if (height > maxSize) { width *= maxSize / height; height = maxSize; }
+                  if (height > maxSize) { 
+                      width *= maxSize / height; 
+                      height = maxSize; 
+                  }
               }
+              
               canvas.width = width;
               canvas.height = height;
               ctx.drawImage(img, 0, 0, width, height);
-              callback(canvas.toDataURL('image/jpeg', 0.7));
+              
+              // 0.5 = 50% quality = picha ndogo sana
+              callback(canvas.toDataURL('image/jpeg', 0.5));
           };
           img.src = e.target.result;
       };
@@ -179,14 +190,14 @@
       };
       
       db.ref('citizens/' + passNo).set(citizen)
-     .then(() => {
+    .then(() => {
             currentPassport = citizen;
             onyeshaPassport(citizen);
         })
-     .catch((error) => {
-            alert('Empire Error: ' + error.message);
+    .catch((error) => {
+            alert('Empire Error: ' + error.message + '\n\nPicha ni kubwa sana. Jaribu picha ndogo.');
         })
-     .finally(() => {
+    .finally(() => {
             document.getElementById('claimBtn').disabled = false;
             document.getElementById('claimBtn').innerText = '👑 CLAIM CITIZENSHIP 👑';
         });
@@ -290,4 +301,4 @@
 </script>
 
 </body>
-    </html>
+</html>
